@@ -1,7 +1,6 @@
 # WordSearch
 Is very cute   
 
-![ic](ic.png)  
 
 <img src="ic.png" style="width: 61px">  
 
