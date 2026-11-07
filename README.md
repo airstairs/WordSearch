@@ -3,9 +3,14 @@ Is very cute
 
 ![ic](ic.png)  
 
-![rec](recording.gif)  
+<img src="ic.png" style="width: 61px">  
+
+<img src="recording.gif" style="width: 299px">  
+
+<hr>  
+
+<img src="windows.gif" style="width: 888px">  
 
 
 
 
-for android

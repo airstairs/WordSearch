@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pencil & Paper Mobile Word Search</title>
+    <style>
+        :root {
+            --paper-bg: #f4efe6;
+            --pencil-dark: #2b2b2b;
+            --pencil-light: #7a7a7a;
+            --grid-line: #d1c7b7;
+            --highlight: rgba(61, 220, 132, 0.35);
+            --android-green: #3DDC84;
+        }
+
+        body {
+            background-color: var(--paper-bg);
+            background-image: 
+                radial-gradient(var(--grid-line) 1.5px, transparent 1.5px),
+                radial-gradient(var(--grid-line) 1.5px, var(--paper-bg) 1.5px);
+            background-size: 24px 24px;
+            background-position: 0 0, 12px 12px;
+            color: var(--pencil-dark);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            touch-action: none; /* Crucial for preventing default touch scrolling during word swipe */
+            user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 12px 0;
+            letter-spacing: 2px;
+            border-bottom: 3px dashed var(--pencil-dark);
+            padding-bottom: 6px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* Screen Controller */
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 480px;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* Start Screen Styling */
+        .start-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 4px solid var(--pencil-dark);
+            border-radius: 12px;
+            padding: 28px 20px;
+            text-align: center;
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.2);
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .start-card h2 {
+            margin: 0;
+            font-size: 1.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .start-card p {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--pencil-light);
+            line-height: 1.4;
+        }
+
+        .doodle-box {
+            font-size: 2.5rem;
+            letter-spacing: 8px;
+            background: var(--paper-bg);
+            border: 2px dashed var(--pencil-dark);
+            padding: 10px;
+            border-radius: 8px;
+            width: 80%;
+        }
+
+        .btn-start {
+            background: var(--android-green);
+            border: 3px solid var(--pencil-dark);
+            color: #ffffff;
+            text-shadow: 1px 1px 0px var(--pencil-dark);
+            padding: 12px 28px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px var(--pencil-dark);
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+
+        .btn-start:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--pencil-dark);
+        }
+
+        /* Game Screen Layout */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+            max-width: 480px;
+            align-items: center;
+            position: relative;
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0 4px;
+        }
+
+        .status-bar {
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-new-puzzle {
+            background: var(--paper-bg);
+            border: 2px solid var(--pencil-dark);
+            color: var(--pencil-dark);
+            padding: 6px 12px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 0.95rem;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 3px 3px 0px var(--pencil-dark);
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
+        }
+
+        .btn-new-puzzle:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px var(--pencil-dark);
+        }
+
+        .btn-new-puzzle:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Grid Board */
+        .grid-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
+            background: var(--pencil-dark);
+            padding: 6px;
+            border: 4px solid var(--pencil-dark);
+            border-radius: 8px;
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.2);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: var(--paper-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: background 0.1s ease;
+        }
+
+        .cell.selected {
+            background: var(--highlight);
+            border: 2px solid var(--android-green);
+        }
+
+        .cell.found {
+            background: var(--android-green) !important;
+            color: #ffffff;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.3);
+            pointer-events: none;
+            border: none;
+        }
+
+        /* Target Words Panel */
+        .word-panel {
+            background: rgba(255, 255, 255, 0.85);
+            border: 3px dashed var(--pencil-dark);
+            padding: 12px 16px;
+            border-radius: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .panel-title {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .word-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .word-item {
+            font-size: 1.05rem;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 4px;
+            background: rgba(244, 239, 230, 0.8);
+            border: 1px solid var(--pencil-light);
+            transition: all 0.2s ease;
+        }
+
+        .word-item.found {
+            background: var(--android-green);
+            color: #ffffff;
+            text-decoration: line-through;
+            border-color: var(--android-green);
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+        }
+
+        /* Full Width Confetti Overlay */
+        #confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 999;
+        }
+
+        .confetti-piece {
+            position: absolute;
+            top: -20px;
+            width: 10px;
+            height: 14px;
+            opacity: 0.9;
+            border-radius: 2px;
+            animation: fall linear forwards;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(0px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(calc(100vh + 40px)) rotate(720deg);
+                opacity: 0.2;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="confetti-container"></div>
+
+    <!-- START SCREEN -->
+    <div id="start-screen" class="screen active">
+        <div class="start-card">
+            <h2>Word Search</h2>
+            <div class="doodle-box">*********</div>
+            <p>for android</p>
+            <button class="btn-start" onclick="startGame()">Play Game</button>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="screen">
+        <div class="game-container">
+            <h1>Word Search</h1>
+            
+            <div class="status-header">
+                <div class="status-bar" id="score-display">Found: 0 / 5</div>
+                <button class="btn-new-puzzle" id="btn-new" onclick="initGame()">New Puzzle</button>
+            </div>
+
+            <div class="grid-board" id="grid"></div>
+
+            <div class="word-panel">
+                <div class="panel-title">Target Words</div>
+                <ul class="word-list" id="word-list"></ul>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const GRID_SIZE = 10;
+    
+    const dictionary = {
+        "ABILITY": "Possession of the means or skill to do something.",
+        "ABSENT": "Not present in a place; lacking.",
+        "ACADEMY": "A place of study or training in a special field.",
+        "ACCOUNT": "A report or description of an event or experience.",
+        "ACHIEVE": "Successfully bring about or reach a desired objective.",
+        "ACQUIRE": "Buy or obtain for oneself.",
+        "ACTIVE": "Engaged in action; operating.",
+        "ADDRESS": "The particulars of the place where someone lives.",
+        "ADVANCE": "Move forward in a purposeful way.",
+        "ADVICE": "Guidance or recommendations offered.",
+        "AFFECT": "Have an effect on; make a difference to.",
+        "AGENCY": "A business or organization providing a service.",
+        "ALARM": "An anxious awareness of danger.",
+        "ALMOST": "Not quite; very nearly.",
+        "ALONE": "Having no one else present.",
+        "ALREADY": "Before or by this time or the time mentioned.",
+        "ALWAYS": "At all times; on all occasions.",
+        "AMOUNT": "A quantity of something, typically the total.",
+        "ANCIENT": "Belonging to the very distant past.",
+        "ANIMAL": "A living organism that feeds on organic matter.",
+        "ANSWER": "A thing said, written, or done as a reaction.",
+        "ANYONE": "Any person or people.",
+        "APPEAR": "Come into sight; become noticeable.",
+        "APPLY": "Make a formal application or put to use.",
+        "ARGUE": "Give reasons or cite evidence in support of an idea.",
+        "ARRIVE": "Reach a destination.",
+        "ARTICLE": "A piece of writing included in a publication.",
+        "ASPECT": "A particular part or feature of something.",
+        "ASSESS": "Evaluate or estimate the nature or ability of.",
+        "ASSIST": "Help someone, typically by doing a share of the work.",
+        "ASSUME": "Suppose to be the case, without proof.",
+        "ATTACK": "Take aggressive action against.",
+        "ATTEND": "Be present at an event.",
+        "AUTHOR": "A writer of a book, article, or report.",
+        "AVOID": "Keep away from or stop oneself from doing.",
+        "BALANCE": "An even distribution of weight.",
+        "BARRIER": "A circumstance or obstacle that keeps people apart.",
+        "BATTLE": "A sustained fight between large organized forces.",
+        "BEAUTY": "A combination of qualities that pleases the intellect.",
+        "BEGIN": "Start; perform or undergo the first part of an action.",
+        "BELIEF": "An acceptance that something exists or is true.",
+        "BENEFIT": "An advantage or profit gained from something.",
+        "BETTER": "Of a more excellent or effective type or quality.",
+        "BEYOND": "At or to the further side of.",
+        "BITTER": "Having a sharp, pungent taste.",
+        "BLANKET": "A large piece of warm cloth used for bedding.",
+        "BORDER": "A line separating two political or geographical areas.",
+        "BRANCH": "A part of a tree growing out from the trunk.",
+        "BREATH": "The air inhaled and exhaled in respiration.",
+        "BRIDGE": "A structure carrying a road across an obstacle.",
+        "BRIGHT": "Emitting or reflecting a lot of light.",
+        "BROKEN": "Fractured or damaged; no longer working.",
+        "BUDGET": "An estimate of income and expenditure for a set period.",
+        "BUILD": "Construct something by putting parts together.",
+        "BURDEN": "A load, typically a heavy one.",
+        "BUSINESS": "A person's regular occupation, profession, or trade.",
+        "CALCULATE": "Determine mathematically.",
+        "CAMERA": "A device for recording visual images.",
+        "CAPABLE": "Having the ability, fitness, or quality necessary.",
+        "CAPITAL": "The most important city or town of a country.",
+        "CAPTURE": "Take into possession or control by force.",
+        "CAREFUL": "Done with or showing great attention.",
+        "CARRY": "Support and move from one place to another.",
+        "CATCH": "Intercept and hold something moving.",
+        "CENTRAL": "At the point or area at the center of something.",
+        "CENTURY": "A period of one hundred years.",
+        "CERTAIN": "Known for sure; established.",
+        "CHANCE": "A possibility of something happening.",
+        "CHANGE": "Make or become different.",
+        "CHARGE": "Demand an amount as a price for a service.",
+        "CHOICE": "An act of selecting between two or more possibilities.",
+        "CHOOSE": "Pick out or select someone or something.",
+        "CHURCH": "A building used for public Christian worship.",
+        "CIRCLE": "A round plane figure whose boundary consists of points.",
+        "CIRCUIT": "A roughly circular line, route, or movement.",
+        "CITIZEN": "A legally recognized subject or national of a state.",
+        "CIVIL": "Relating to ordinary citizens and their concerns.",
+        "CLAIM": "State or assert that something is the case.",
+        "CLASS": "A set or category of things having a common property.",
+        "CLEAN": "Free from dirt, marks, or stains.",
+        "CLEAR": "Easy to perceive, understand, or interpret.",
+        "CLIENT": "A person or organization using services.",
+        "CLIMB": "Go or come up a slope or staircase.",
+        "CLOSE": "At a short distance away in space or time.",
+        "CLOTH": "Woven or knitted material.",
+        "CLOUD": "A visible mass of condensed water vapor.",
+        "COAST": "The part of the land near the sea.",
+        "CODE": "A set of rules or instructions for a computer.",
+        "COLLECT": "Bring or gather together.",
+        "COLLEGE": "An educational institution or establishment.",
+        "COMBINE": "Join or merge to form a single unit.",
+        "COMFORT": "A state of physical ease and freedom.",
+        "COMMAND": "Give an authoritative order.",
+        "COMMENT": "A verbal or written remark expressing an opinion.",
+        "COMMON": "Occurring, found, or done often.",
+        "COMPANY": "A commercial business.",
+        "COMPARE": "Estimate, measure, or note the similarity.",
+        "COMPETE": "Strive to gain or win something by defeating others.",
+        "COMPLEX": "Consisting of many different and connected parts.",
+        "COMPOSE": "Write or create a work of art or music.",
+        "CONCEPT": "An abstract idea; a general notion.",
+        "CONCERN": "Relate to; be about.",
+        "CONCLUDE": "Bring or come to an end.",
+        "CONDUCT": "The manner in which a person behaves.",
+        "CONFIRM": "Establish the truth or correctness of something.",
+        "CONNECT": "Bring together so as to form a link.",
+        "CONSIDER": "Deem to be; think carefully about.",
+        "CONSIST": "Be composed or made up of.",
+        "CONSTANT": "Occurring continuously over a period.",
+        "CONSTRUCT": "Build or erect something.",
+        "CONTAIN": "Have or hold within.",
+        "CONTINUE": "Persist in an activity or process.",
+        "CONTRACT": "A written or spoken agreement.",
+        "CONTRAST": "The state of being strikingly different.",
+        "CONTROL": "The power to influence or direct people's behavior.",
+        "CONVERT": "Change the form, character, or function of.",
+        "COOPERATE": "Act jointly with others.",
+        "CORRECT": "Free from error; agreeing with truth.",
+        "COUNCIL": "An advisory or deliberative body of people.",
+        "COUNSEL": "Advice given to someone.",
+        "COUNTRY": "A nation with its own government.",
+        "COUPLE": "Two individuals of the same sort.",
+        "COURSE": "The route or direction followed by a ship or aircraft.",
+        "COURT": "A body presided over by a judge.",
+        "COVER": "Put something on top of or in front of.",
+        "CREATE": "Bring something into existence.",
+        "CREDIT": "The ability of a customer to obtain goods before payment.",
+        "CRIME": "An action or omission that constitutes an offense.",
+        "CRISIS": "A time of intense difficulty or danger.",
+        "CRITERIA": "A principle or standard by which something may be judged.",
+        "CULTURE": "The arts and other manifestations of human achievement.",
+        "CURRENT": "Belonging to the present time; happening now.",
+        "CUSTOM": "A traditional and widely accepted way of behaving.",
+        "DAMAGE": "Physical harm caused to something.",
+        "DANGER": "The possibility of suffering harm or injury.",
+        "DEAL": "Distribute; handle or cope with a situation.",
+        "DEBATE": "A formal discussion on a particular matter.",
+        "DECIDE": "Come to a resolution in the mind.",
+        "DECLARE": "Announce publicly or officially.",
+        "DEFEND": "Resist an attack made on someone or something.",
+        "DEFINE": "State or describe the exact nature or scope.",
+        "DEGREE": "The amount, level, or extent to which something happens.",
+        "DELIVER": "Bring and hand over to the proper recipient.",
+        "DEMAND": "An insistent and peremptory request.",
+        "DEPEND": "Be controlled or determined by.",
+        "DEPICT": "Represent by a drawing, painting, or sculpture.",
+        "DERIVE": "Obtain something from a specified source.",
+        "DESCRIBE": "Acknowledge or give an account in words.",
+        "DESIGN": "A plan or drawing produced to show the look.",
+        "DESIRE": "A strong feeling of wanting to have something.",
+        "DESPITE": "Without being affected by; in spite of.",
+        "DESTROY": "End the existence of by damaging or ruining.",
+        "DETAIL": "An individual fact or item.",
+        "DETECT": "Discover or identify the presence of.",
+        "DEVELOP": "Grow or cause to grow and become more mature.",
+        "DEVICE": "A thing made or adapted for a particular purpose.",
+        "DIAL": "A face of a clock or watch marked with units.",
+        "DIARY": "A book in which one keeps a daily record.",
+        "DIGITAL": "Expressed in digits, especially binary ones.",
+        "DIRECT": "Extending or moving straight.",
+        "DISCUSS": "Talk about something with another person.",
+        "DISEASE": "A disorder of structure or function in a human.",
+        "DISPLAY": "Put something in a prominent place.",
+        "DISTANT": "Far away in space or time.",
+        "DISTRICT": "An area of a country or city.",
+        "DIVIDE": "Separate into parts or groups.",
+        "DOCTOR": "A qualified practitioner of medicine.",
+        "DOLLAR": "The basic monetary unit of the US.",
+        "DOMAIN": "An area of territory owned or controlled.",
+        "DONATE": "Give money or goods for a good cause.",
+        "DOUBLE": "Consisting of two equal, identical, or similar parts.",
+        "DRAMA": "A play for theater, television, or radio.",
+        "DRAW": "Produce a picture by making lines.",
+        "DREAM": "A series of thoughts, images, and sensations occurring in sleep.",
+        "DRESS": "A one-piece garment for a woman or girl.",
+        "DRINK": "Take liquid into the mouth and swallow.",
+        "DRIVE": "Operate and control the direction of a vehicle.",
+        "DROP": "Let or cause to fall.",
+        "DURING": "Throughout the course or duration of.",
+        "EAGER": "Showing keen interest or desire.",
+        "EARLY": "Happening or done before the usual or expected time.",
+        "EARN": "Obtain money in return for labor or services.",
+        "EARTH": "The planet on which we live.",
+        "EASILY": "Without difficulty or effort.",
+        "ECLIPSE": "An obscuring of the light from one celestial body.",
+        "ECONOMIC": "Relating to economics or the economy.",
+        "EDITION": "A particular form in which a book or newspaper is published.",
+        "EDUCATE": "Give intellectual, moral, and social instruction.",
+        "EFFECT": "A change which is a result or consequence of an action.",
+        "EFFORT": "A vigorous or determined attempt.",
+        "EITHER": "One or the other of two people or things.",
+        "ELDER": "(Of a person) older.",
+        "ELECT": "Choose someone by voting.",
+        "ELEMENT": "A part or aspect of something abstract.",
+        "ELEVATE": "Lift up or raise to a higher position.",
+        "EMERGE": "Move out of or away from something and come into view.",
+        "EMPHASIS": "Special importance, value, or prominence given.",
+        "EMPLOY": "Give work to someone and pay them for it.",
+        "ENABLE": "Give someone the authority or means to do something.",
+        "ENCOUNTER": "Unexpectedly experience or be faced with.",
+        "ENERGY": "The strength and vitality required for sustained physical or mental activity.",
+        "ENGAGE": "Busy, occupy, or attract someone's attention.",
+        "ENGINE": "A machine with moving parts that converts power.",
+        "ENJOY": "Take delight or pleasure in.",
+        "ENORMOUS": "Very large in size or quantity.",
+        "ENSURE": "Make certain that something shall occur.",
+        "ENTER": "Come or go in.",
+        "ENTIRE": "With no part left out; whole.",
+        "ENVIRONMENT": "The surroundings or conditions in which a person operates.",
+        "EQUAL": "Being the same in quantity, size, degree, or value.",
+        "EQUIP": "Supply with the necessary items for a particular purpose.",
+        "ESCAPE": "Break free from confinement or control.",
+        "ESTABLISH": "Set up on a firm or permanent basis.",
+        "ESTATE": "An extensive area of land in the country.",
+        "ESTIMATE": "Roughly calculate or judge the value.",
+        "ETHIC": "Moral principles that govern a person's behavior.",
+        "EVALUATE": "Form an idea of the amount, number, or value of.",
+        "EVENT": "A thing that happens, especially one of importance.",
+        "EVERY": "Used to refer to all the individual members of a set.",
+        "EVIDENCE": "The available body of facts indicating whether a belief is true.",
+        "EXACT": "Not varying in any way; precise.",
+        "EXAMINE": "Inspect someone or something in detail.",
+        "EXCEED": "Be greater in number or size than.",
+        "EXCEPT": "Not including; other than.",
+        "EXCHANGE": "Act of giving one thing and receiving another.",
+        "EXCITE": "Cause strong feelings of enthusiasm in.",
+        "EXCLUDE": "Deny someone access to or bar from a place.",
+        "EXCUSE": "Attempt to lessen the blame of an offense.",
+        "EXECUTE": "Carry out or put into effect a plan or order.",
+        "EXERCISE": "Activity requiring physical effort.",
+        "EXHIBIT": "Locally display a collection of items.",
+        "EXIST": "Have objective reality or being.",
+        "EXPAND": "Become or make larger or more extensive.",
+        "EXPECT": "Regard something as likely to happen.",
+        "EXPENSE": "The cost required for something.",
+        "EXPERIENCE": "Practical contact with and observation of facts.",
+        "EXPERT": "A person who is very knowledgeable about a domain.",
+        "EXPLAIN": "Make clear to someone by describing in detail.",
+        "EXPLORE": "Travel through an unfamiliar area in order to learn.",
+        "EXPRESS": "Convey a thought or feeling in words.",
+        "EXTEND": "Caused to cover a larger area; lengthen.",
+        "EXTREME": "Reaching a high or the highest degree."
+    };
+    
+    let currentWords = [];
+    let gridData = [];
+    let foundWordsCount = 0;
+
+    // Swipe selection state variables
+    let isSwiping = false;
+    let startCell = null;
+    let currentSwipeCells = [];
+
+    // Web Audio API context setup
+    let audioCtx = null;
+    let scribbleNode = null;
+    let scribbleGain = null;
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playScribbleStart() {
+        initAudio();
+        if (!audioCtx) return;
+
+        // Pink noise buffer for gentle pencil scratching
+        const bufferSize = audioCtx.sampleRate * 2;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            b3 = 0.86650 * b3 + white * 0.3104856;
+            b4 = 0.55000 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.0168980;
+            data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+            data[i] *= 0.04; // Reduced output level for a quieter sound
+            b6 = white * 0.115926;
+        }
+
+        scribbleNode = audioCtx.createBufferSource();
+        scribbleNode.buffer = buffer;
+        scribbleNode.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1800;
+        filter.Q.value = 1.2;
+
+        scribbleGain = audioCtx.createGain();
+        // Soft volume setting (0.12 gain)
+        scribbleGain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+
+        scribbleNode.connect(filter);
+        filter.connect(scribbleGain);
+        scribbleGain.connect(audioCtx.destination);
+
+        scribbleNode.start();
+    }
+
+    function stopScribble() {
+        if (scribbleGain && audioCtx) {
+            scribbleGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.03);
+            setTimeout(() => {
+                if (scribbleNode) {
+                    try { scribbleNode.stop(); } catch(e){}
+                    scribbleNode.disconnect();
+                    scribbleNode = null;
+                }
+            }, 60);
+        }
+    }
+
+    function playConfettiPopperSound() {
+        initAudio();
+        if (!audioCtx) return;
+
+        const now = audioCtx.currentTime;
+
+        // 1. Initial "POP" - High pitch burst quickly dropping
+        const popOsc = audioCtx.createOscillator();
+        const popGain = audioCtx.createGain();
+        popOsc.type = 'sine';
+        popOsc.frequency.setValueAtTime(800, now);
+        popOsc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+
+        popGain.gain.setValueAtTime(0.7, now);
+        popGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+        popOsc.connect(popGain);
+        popGain.connect(audioCtx.destination);
+        popOsc.start(now);
+        popOsc.stop(now + 0.08);
+
+        // 2. Low Springy Thump (Pressure release)
+        const thumpOsc = audioCtx.createOscillator();
+        const thumpGain = audioCtx.createGain();
+        thumpOsc.type = 'triangle';
+        thumpOsc.frequency.setValueAtTime(160, now);
+        thumpOsc.frequency.exponentialRampToValueAtTime(45, now + 0.18);
+
+        thumpGain.gain.setValueAtTime(0.6, now);
+        thumpGain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+
+        thumpOsc.connect(thumpGain);
+        thumpGain.connect(audioCtx.destination);
+        thumpOsc.start(now);
+        thumpOsc.stop(now + 0.18);
+
+        // 3. Shimmering Paper / Streamer Flutter Noise
+        const noiseBufferSize = audioCtx.sampleRate * 0.35;
+        const noiseBuffer = audioCtx.createBuffer(1, noiseBufferSize, audioCtx.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseBufferSize; i++) {
+            noiseData[i] = Math.random() * 2 - 1;
+        }
+
+        const noiseNode = audioCtx.createBufferSource();
+        noiseNode.buffer = noiseBuffer;
+
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.setValueAtTime(1200, now);
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.5, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+        noiseNode.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+
+        noiseNode.start(now);
+        noiseNode.stop(now + 0.35);
+    }
+
+    function startGame() {
+        initAudio();
+        document.getElementById('start-screen').classList.remove('active');
+        document.getElementById('game-screen').classList.add('active');
+        initGame();
+    }
+
+    function initGame() {
+        let keys = Object.keys(dictionary).filter(w => w.length <= 7);
+        let shuffled = keys.sort(() => 0.5 - Math.random());
+        currentWords = shuffled.slice(0, 5);
+        
+        foundWordsCount = 0;
+        document.getElementById('score-display').innerText = `Found: 0 / ${currentWords.length}`;
+        
+        const btnNew = document.getElementById('btn-new');
+        btnNew.disabled = false;
+
+        generateGrid();
+        renderWordList();
+    }
+
+    function generateGrid() {
+        gridData = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(''));
+
+        const directions = [
+            {r: 0, c: 1},   // Horizontal right
+            {r: 1, c: 0},   // Vertical down
+            {r: 1, c: 1},   // Diagonal down-right
+            {r: 1, c: -1}   // Diagonal down-left
+        ];
+
+        currentWords.forEach(word => {
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 100) {
+                attempts++;
+                let dir = directions[Math.floor(Math.random() * directions.length)];
+                let row = Math.floor(Math.random() * GRID_SIZE);
+                let col = Math.floor(Math.random() * GRID_SIZE);
+
+                let endRow = row + dir.r * (word.length - 1);
+                let endCol = col + dir.c * (word.length - 1);
+
+                if (endRow >= 0 && endRow < GRID_SIZE && endCol >= 0 && endCol < GRID_SIZE) {
+                    let fit = true;
+                    for (let i = 0; i < word.length; i++) {
+                        let r = row + dir.r * i;
+                        let c = col + dir.c * i;
+                        if (gridData[r][c] !== '' && gridData[r][c] !== word[i]) {
+                            fit = false;
+                            break;
+                        }
+                    }
+                    if (fit) {
+                        for (let i = 0; i < word.length; i++) {
+                            let r = row + dir.r * i;
+                            let c = col + dir.c * i;
+                            gridData[r][c] = word[i];
+                        }
+                        placed = true;
+                    }
+                }
+            }
+        });
+
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                if (gridData[r][c] === '') {
+                    gridData[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)];
+                }
+            }
+        }
+
+        renderGridDOM();
+    }
+
+    function renderGridDOM() {
+        const gridEl = document.getElementById('grid');
+        gridEl.innerHTML = '';
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                cell.innerText = gridData[r][c];
+
+                cell.addEventListener('mousedown', (e) => startSwipe(r, c, e));
+                cell.addEventListener('mouseenter', (e) => continueSwipe(r, c, e));
+                
+                cell.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    startSwipe(r, c, e);
+                }, {passive: false});
+                
+                cell.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    let touch = e.touches[0];
+                    let target = document.elementFromPoint(touch.clientX, touch.clientY);
+                    if (target && target.classList.contains('cell')) {
+                        continueSwipe(parseInt(target.dataset.row), parseInt(target.dataset.col), e);
+                    }
+                }, {passive: false});
+
+                gridEl.appendChild(cell);
+            }
+        }
+
+        window.addEventListener('mouseup', endSwipe);
+        window.addEventListener('touchend', endSwipe);
+    }
+
+    function renderWordList() {
+        const listEl = document.getElementById('word-list');
+        listEl.innerHTML = '';
+        currentWords.forEach(word => {
+            const li = document.createElement('li');
+            li.className = 'word-item';
+            li.id = `word-${word}`;
+            li.innerText = word;
+            listEl.appendChild(li);
+        });
+    }
+
+    function startSwipe(r, c, e) {
+        isSwiping = true;
+        startCell = {r, c};
+        playScribbleStart();
+        updateSwipeSelection(r, c);
+    }
+
+    function continueSwipe(r, c, e) {
+        if (!isSwiping || !startCell) return;
+        updateSwipeSelection(r, c);
+    }
+
+    function updateSwipeSelection(r, c) {
+        let dr = r - startCell.r;
+        let dc = c - startCell.c;
+        let steps = Math.max(Math.abs(dr), Math.abs(dc));
+
+        if (steps > 0) {
+            if (dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc)) return;
+        }
+
+        let stepR = steps === 0 ? 0 : dr / steps;
+        let stepC = steps === 0 ? 0 : dc / steps;
+
+        currentSwipeCells = [];
+        for (let i = 0; i <= steps; i++) {
+            let currR = Math.round(startCell.r + stepR * i);
+            let currC = Math.round(startCell.c + stepC * i);
+            currentSwipeCells.push({r: currR, c: currC, val: gridData[currR][currC]});
+        }
+
+        document.querySelectorAll('.cell').forEach(cell => {
+            if (!cell.classList.contains('found')) {
+                cell.classList.remove('selected');
+            }
+        });
+
+        currentSwipeCells.forEach(sc => {
+            let targetCell = document.querySelector(`.cell[data-row='${sc.r}'][data-col='${sc.c}']`);
+            if (targetCell && !targetCell.classList.contains('found')) {
+                targetCell.classList.add('selected');
+            }
+        });
+    }
+
+    function endSwipe() {
+        if (!isSwiping) return;
+        isSwiping = false;
+        stopScribble();
+
+        let selectedWord = currentSwipeCells.map(cell => cell.val).join('');
+        let reversedWord = currentSwipeCells.map(cell => cell.val).reverse().join('');
+
+        currentWords.forEach(word => {
+            let wordLi = document.getElementById(`word-${word}`);
+            if ((selectedWord === word || reversedWord === word) && wordLi && !wordLi.classList.contains('found')) {
+                wordLi.classList.add('found');
+                currentSwipeCells.forEach(sc => {
+                    let targetCell = document.querySelector(`.cell[data-row='${sc.r}'][data-col='${sc.c}']`);
+                    if (targetCell) {
+                        targetCell.classList.remove('selected');
+                        targetCell.classList.add('found');
+                    }
+                });
+                foundWordsCount++;
+                document.getElementById('score-display').innerText = `Found: ${foundWordsCount} / ${currentWords.length}`;
+
+                if (foundWordsCount === currentWords.length) {
+                    triggerWinSequence();
+                }
+            }
+        });
+
+        currentSwipeCells = [];
+        startCell = null;
+        document.querySelectorAll('.cell.selected').forEach(c => c.classList.remove('selected'));
+    }
+
+    function triggerWinSequence() {
+        playConfettiPopperSound();
+        
+        const btnNew = document.getElementById('btn-new');
+        btnNew.disabled = true;
+
+        launchConfetti();
+
+        // Re-enable "New Puzzle" button after full fall sequence finishes
+        setTimeout(() => {
+            btnNew.disabled = false;
+        }, 2200);
+    }
+
+    function launchConfetti() {
+        const container = document.getElementById('confetti-container');
+        container.innerHTML = '';
+
+        const colors = ['#3DDC84', '#e67e22', '#3498db', '#e74c3c', '#f1c40f', '#9b59b6'];
+        const particleCount = 65;
+
+        for (let i = 0; i < particleCount; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'confetti-piece';
+            
+            // Full screen width distribution (0vw to 100vw)
+            piece.style.left = `${Math.random() * 100}vw`;
+            piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            const duration = 1.4 + Math.random() * 0.8;
+            piece.style.animationDuration = `${duration}s`;
+            
+            const delay = Math.random() * 0.35;
+            piece.style.animationDelay = `${delay}s`;
+
+            container.appendChild(piece);
+        }
+
+        setTimeout(() => {
+            container.innerHTML = '';
+        }, 2600);
+    }
+</script>
+
+</body>
+</html>
